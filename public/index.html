@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS & Taksit Komisyon Hesaplayıcı</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased">
+  <!-- Navbar -->
+  <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-white tracking-tight">POS Komisyon Portalı</h1>
+          <p class="text-xs text-slate-400">Taksit & Banka Komisyon Analiz Paneli</p>
+        </div>
+      </div>
+      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span> Canlı Oranlar
+      </span>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Controls Card -->
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl mb-8 backdrop-blur-sm">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+        
+        <!-- Product Type Selector -->
+        <div class="md:col-span-4">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Ürün Türü Seçimi</label>
+          <div class="grid grid-cols-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
+            <button id="btn-phone" onclick="setType('phone')" class="py-2.5 px-4 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-2 bg-blue-600 text-white shadow">
+              <span>📱</span>
+              <span>Telefon</span>
+            </button>
+            <button id="btn-normal" onclick="setType('normal')" class="py-2.5 px-4 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-2 text-slate-400 hover:text-white">
+              <span>📦</span>
+              <span>Normal Ürün</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Price Input -->
+        <div class="md:col-span-5">
+          <label for="priceInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Taban / Peşin Tutar (₺)</label>
+          <div class="relative rounded-xl shadow-sm">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 font-semibold">₺</div>
+            <input type="number" id="priceInput" value="10000" min="0" step="any" oninput="calculate()" class="block w-full pl-9 pr-12 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-lg font-bold text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+            <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-xs text-slate-500 font-medium">TRY</div>
+          </div>
+        </div>
+
+        <!-- Mode Toggle -->
+        <div class="md:col-span-3">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Hesaplama Modu</label>
+          <select id="modeSelect" onchange="calculate()" class="block w-full py-2.5 px-3 bg-slate-950 border border-slate-800 rounded-xl text-sm font-medium text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="with_commission">+ Komisyonlu Satış Fiyatı (Müşteri Öder)</option>
+            <option value="net_payout">Hesaba Geçen Tutar (Komisyon Kesintili)</option>
+          </select>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Quick Info Cards -->
+    <div id="quickInfoGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"></div>
+
+    <!-- Bank Comparison Table -->
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl overflow-hidden mb-8">
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-bold text-white" id="tableTitle">Banka Bazlı Taksit Komisyon Tablosu</h2>
+          <p class="text-xs text-slate-400" id="tableSubtitle">Tüm bankalar ve taksit sayılarına göre detaylı oranlar</p>
+        </div>
+        <span class="text-xs px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 font-mono" id="currentBasePriceBadge">10.000,00 ₺</span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse" id="bankTable">
+          <thead>
+            <tr class="bg-slate-950/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <th class="py-3.5 px-4 text-center">Taksit</th>
+              <th class="py-3.5 px-4">Finansbank</th>
+              <th class="py-3.5 px-4">Ziraat</th>
+              <th class="py-3.5 px-4">Bonus (Garanti)</th>
+              <th class="py-3.5 px-4">Maximum (İş)</th>
+              <th class="py-3.5 px-4">Paraf (Halk)</th>
+              <th class="py-3.5 px-4">Yapı Kredi</th>
+              <th class="py-3.5 px-4">Akbank</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60 text-sm font-medium" id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Extra Installments & Categories Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Ekstra Taksit Card -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-1 flex items-center space-x-2">
+          <span>⚡</span>
+          <span id="extraTableTitle">Ekstra Taksit Simülasyonu</span>
+        </h3>
+        <p class="text-xs text-slate-400 mb-4">Artı taksit seçeneklerine göre toplam tutar ve aylık taksit tutarı</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 font-semibold uppercase">
+                <th class="py-2.5 px-3">Seçenek</th>
+                <th class="py-2.5 px-3">Taksit Sayısı</th>
+                <th class="py-2.5 px-3 text-right">Toplam Tutar</th>
+                <th class="py-2.5 px-3 text-right">Aylık Ödeme</th>
+              </tr>
+            </thead>
+            <tbody id="extraTableBody" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Kategori Bazlı veya Ek Bilgi Card -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl" id="categoryOrRulesCard"></div>
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-800 py-6 text-center text-xs text-slate-500">
+    POS Taksit & Komisyon Hesaplayıcı &copy; 2026. Railway üzerinde kullanıma hazırdır.
+  </footer>
+
+  <script>
+    let currentType = 'phone';
+
+    // Bank Commission Multipliers (+ Komisyon formatında: 1 + oran)
+    const RATES = {
+      'Tek Çekim': { finans: 1.0100, ziraat: 1.0220, bonus: 1.0300, maximum: 1.0240, paraf: 1.0279, world: 1.0284, akbank: 1.0285 },
+      '2 Taksit':  { finans: 1.0190, ziraat: 1.0399, bonus: 1.0437, maximum: 1.0427, paraf: 1.0427, world: 1.0426, akbank: 1.0527 },
+      '3 Taksit':  { finans: 1.0255, ziraat: 1.0469, bonus: 1.0572, maximum: 1.0569, paraf: 1.0569, world: 1.0569, akbank: 1.0669 },
+      '4 Taksit':  { finans: 1.0315, ziraat: 1.0536, bonus: 1.0708, maximum: 1.0711, paraf: 1.0711, world: 1.0711, akbank: 1.0811 },
+      '5 Taksit':  { finans: 1.0380, ziraat: 1.0629, bonus: 1.0843, maximum: 1.0854, paraf: 1.0854, world: 1.0853, akbank: 1.0954 },
+      '6 Taksit':  { finans: 1.0445, ziraat: 1.0699, bonus: 1.0779, maximum: 1.0996, paraf: 1.0996, world: 1.0995, akbank: 1.1096 },
+      '7 Taksit':  { finans: 1.0505, ziraat: 1.0799, bonus: 1.1114, maximum: 1.1138, paraf: 1.1138, world: 1.1138, akbank: 1.1238 },
+      '8 Taksit':  { finans: 1.0570, ziraat: 1.0849, bonus: 1.1250, maximum: 1.1280, paraf: 1.1280, world: 1.1280, akbank: 1.1381 },
+      '9 Taksit':  { finans: 1.0640, ziraat: 1.0949, bonus: 1.1385, maximum: 1.1423, paraf: 1.1423, world: 1.1422, akbank: 1.1523 },
+      '10 Taksit': { finans: 1.0695, ziraat: 1.1049, bonus: 1.1521, maximum: 1.1565, paraf: 1.1565, world: 1.1565, akbank: 1.1665 },
+      '11 Taksit': { finans: 1.0780, ziraat: 1.1199, bonus: 1.1656, maximum: 1.1707, paraf: 1.1707, world: 1.1707, akbank: 1.1807 },
+      '12 Taksit': { finans: 1.0820, ziraat: 1.1299, bonus: 1.1792, maximum: 1.1850, paraf: 1.1850, world: 1.1850, akbank: 1.1950 }
+    };
+
+    // Ekstra Taksit Oranları
+    const PHONE_EXTRA = [
+      { name: 'ARTI 1', label: 'Tek Çekim', factor: 1.0000, inst: 1 },
+      { name: 'ARTI 2', label: '2 Taksit', factor: 1.0610, inst: 2 },
+      { name: 'ARTI 3', label: '3 Taksit', factor: 1.0830, inst: 3 },
+      { name: 'ARTI 4', label: '4 Taksit', factor: 1.1048, inst: 4 },
+      { name: 'ARTI 5', label: '5 Taksit', factor: 1.1300, inst: 5 },
+      { name: 'ARTI 6', label: '6 Taksit', factor: 1.1520, inst: 6 },
+      { name: 'ARTI 7', label: '7 Taksit', factor: 1.1780, inst: 7 },
+      { name: 'ARTI 8', label: '8 Taksit', factor: 1.2100, inst: 8 }
+    ];
+
+    const NORMAL_EXTRA = [
+      { name: 'ARTI 1', label: '4 Taksit', factor: 1.02, inst: 4 },
+      { name: 'ARTI 2', label: '5 Taksit', factor: 1.04, inst: 5 },
+      { name: 'ARTI 3', label: '6 Taksit', factor: 1.06, inst: 6 },
+      { name: 'ARTI 4', label: '7 Taksit', factor: 1.08, inst: 7 },
+      { name: 'ARTI 5', label: '8 Taksit', factor: 1.10, inst: 8 },
+      { name: 'ARTI 6', label: '9 Taksit', factor: 1.12, inst: 9 },
+      { name: 'ARTI 7', label: '10 Taksit', factor: 1.14, inst: 10 },
+      { name: 'ARTI 8', label: '11 Taksit', factor: 1.16, inst: 11 },
+      { name: 'ARTI 9', label: '12 Taksit', factor: 1.18, inst: 12 },
+      { name: 'ARTI 10', label: '13 Taksit', factor: 1.20, inst: 13 },
+      { name: 'ARTI 11', label: '14 Taksit', factor: 1.22, inst: 14 },
+      { name: 'ARTI 12', label: '15 Taksit', factor: 1.24, inst: 15 }
+    ];
+
+    const NORMAL_CATEGORIES = [
+      { name: 'Televizyon (3/4/6)', factor: 1.049, rateTxt: '%4.90', rule: '5.000 ₺ altı 4, üzeri 6 taksit' },
+      { name: 'Beyaz Eşya (3/4/6)', factor: 1.049, rateTxt: '%4.90', rule: 'Azami 9 taksit' },
+      { name: 'Tablet (3/4/6)', factor: 1.049, rateTxt: '%4.90', rule: 'Azami 6 taksit' },
+      { name: 'Bilgisayar (5/6/7)', factor: 1.058, rateTxt: '%5.80', rule: 'Azami 12 taksit' },
+      { name: 'Elektronik (5/6/7)', factor: 1.058, rateTxt: '%5.80', rule: 'Azami 6 taksit' },
+      { name: 'Küçük Ev Aletleri (5/6/7)', factor: 1.058, rateTxt: '%5.80', rule: 'Azami 9 taksit' }
+    ];
+
+    function formatTRY(val) {
+      return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val) + ' ₺';
+    }
+
+    function setType(type) {
+      currentType = type;
+      const btnPhone = document.getElementById('btn-phone');
+      const btnNormal = document.getElementById('btn-normal');
+
+      if (type === 'phone') {
+        btnPhone.className = "py-2.5 px-4 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-2 bg-blue-600 text-white shadow";
+        btnNormal.className = "py-2.5 px-4 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-2 text-slate-400 hover:text-white";
+      } else {
+        btnNormal.className = "py-2.5 px-4 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-2 bg-blue-600 text-white shadow";
+        btnPhone.className = "py-2.5 px-4 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-2 text-slate-400 hover:text-white";
+      }
+      calculate();
+    }
+
+    function calculate() {
+      const price = parseFloat(document.getElementById('priceInput').value) || 0;
+      const mode = document.getElementById('modeSelect').value;
+      const isWithComm = mode === 'with_commission';
+
+      document.getElementById('currentBasePriceBadge').textContent = formatTRY(price);
+
+      // 1. Quick Info Cards
+      const quickInfoGrid = document.getElementById('quickInfoGrid');
+      const singleFinans = isWithComm ? price * RATES['Tek Çekim'].finans : price - (price * RATES['Tek Çekim'].finans - price);
+      const singleAkbank = isWithComm ? price * RATES['Tek Çekim'].akbank : price - (price * RATES['Tek Çekim'].akbank - price);
+      const sixInstZiraat = isWithComm ? price * RATES['6 Taksit'].ziraat : price - (price * RATES['6 Taksit'].ziraat - price);
+      const sixInstFinans = isWithComm ? price * RATES['6 Taksit'].finans : price - (price * RATES['6 Taksit'].finans - price);
+
+      quickInfoGrid.innerHTML = `
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between">
+          <span class="text-xs font-semibold text-slate-400 uppercase">En Düşük Tek Çekim (Finansbank)</span>
+          <span class="text-lg font-bold text-emerald-400 mt-1">${formatTRY(singleFinans)}</span>
+          <span class="text-[11px] text-slate-500 mt-1">Komisyon: %1.00</span>
+        </div>
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between">
+          <span class="text-xs font-semibold text-slate-400 uppercase">Standart Tek Çekim (Akbank)</span>
+          <span class="text-lg font-bold text-slate-200 mt-1">${formatTRY(singleAkbank)}</span>
+          <span class="text-[11px] text-slate-500 mt-1">Komisyon: %2.85</span>
+        </div>
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between">
+          <span class="text-xs font-semibold text-slate-400 uppercase">6 Taksit (Finansbank)</span>
+          <span class="text-lg font-bold text-blue-400 mt-1">${formatTRY(sixInstFinans)}</span>
+          <span class="text-[11px] text-slate-500 mt-1">Aylık: ${formatTRY(sixInstFinans / 6)}</span>
+        </div>
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between">
+          <span class="text-xs font-semibold text-slate-400 uppercase">6 Taksit (Ziraat)</span>
+          <span class="text-lg font-bold text-indigo-400 mt-1">${formatTRY(sixInstZiraat)}</span>
+          <span class="text-[11px] text-slate-500 mt-1">Aylık: ${formatTRY(sixInstZiraat / 6)}</span>
+        </div>
+      `;
+
+      // 2. Bank Table
+      const tableBody = document.getElementById('tableBody');
+      tableBody.innerHTML = '';
+
+      // Taksit kısıtlaması (Telefonlar için BDDK uyarısı veya genel filtre)
+      const installmentRows = ['Tek Çekim', '2 Taksit', '3 Taksit', '4 Taksit', '5 Taksit', '6 Taksit', '7 Taksit', '8 Taksit', '9 Taksit', '10 Taksit', '11 Taksit', '12 Taksit'];
+
+      installmentRows.forEach((rowKey, idx) => {
+        const factorObj = RATES[rowKey];
+        const instCount = idx === 0 ? 1 : idx + 1;
+
+        const calcCell = (factor) => {
+          const total = isWithComm ? (price * factor) : (price - (price * factor - price));
+          const monthly = total / instCount;
+          return `
+            <div class="font-semibold text-slate-200">${formatTRY(total)}</div>
+            ${instCount > 1 ? `<div class="text-[11px] text-slate-400">${formatTRY(monthly)} / ay</div>` : ''}
+          `;
+        };
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-800/40 transition-colors";
+        tr.innerHTML = `
+          <td class="py-3 px-4 text-center font-bold text-blue-400 bg-slate-950/40 border-r border-slate-800/60">${rowKey}</td>
+          <td class="py-3 px-4 font-mono">${calcCell(factorObj.finans)}</td>
+          <td class="py-3 px-4 font-mono">${calcCell(factorObj.ziraat)}</td>
+          <td class="py-3 px-4 font-mono">${calcCell(factorObj.bonus)}</td>
+          <td class="py-3 px-4 font-mono">${calcCell(factorObj.maximum)}</td>
+          <td class="py-3 px-4 font-mono">${calcCell(factorObj.paraf)}</td>
+          <td class="py-3 px-4 font-mono">${calcCell(factorObj.world)}</td>
+          <td class="py-3 px-4 font-mono">${calcCell(factorObj.akbank)}</td>
+        `;
+        tableBody.appendChild(tr);
+      });
+
+      // 3. Ekstra Taksit Tablosu
+      const extraList = currentType === 'phone' ? PHONE_EXTRA : NORMAL_EXTRA;
+      const extraTableBody = document.getElementById('extraTableBody');
+      extraTableBody.innerHTML = '';
+
+      extraList.forEach(item => {
+        const total = price * item.factor;
+        const perMonth = total / item.inst;
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-800/30";
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-semibold text-amber-400">${item.name}</td>
+          <td class="py-2.5 px-3 text-slate-300">${item.label}</td>
+          <td class="py-2.5 px-3 text-right font-mono font-medium text-slate-200">${formatTRY(total)}</td>
+          <td class="py-2.5 px-3 text-right font-mono text-emerald-400">${formatTRY(perMonth)}</td>
+        `;
+        extraTableBody.appendChild(tr);
+      });
+
+      // 4. Kategori & Mevzuat Kartı
+      const catCard = document.getElementById('categoryOrRulesCard');
+      if (currentType === 'phone') {
+        catCard.innerHTML = `
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-1 flex items-center space-x-2">
+            <span>📋</span>
+            <span>BDDK & POS Taksit Kuralları</span>
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">Cep telefonu satışlarında uygulanan mevzuat ve taksit sınırları</p>
+          <div class="space-y-3">
+            <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-start space-x-3">
+              <span class="text-amber-400 font-bold">12.000 ₺</span>
+              <div class="text-xs text-slate-300">
+                Fiyatı <strong>12.000 ₺ ve altında</strong> olan cep telefonlarında kredi kartına azami <strong>12 ay</strong> taksit uygulanabilir.
+              </div>
+            </div>
+            <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-start space-x-3">
+              <span class="text-rose-400 font-bold">> 12.000 ₺</span>
+              <div class="text-xs text-slate-300">
+                Fiyatı <strong>12.000 ₺ üzerinde</strong> olan sıfır cep telefonlarında kredi kartına azami <strong>3 ay</strong> taksit uygulanabilir.
+              </div>
+            </div>
+            <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-start space-x-3">
+              <span class="text-blue-400 font-bold">Yenilenmiş</span>
+              <div class="text-xs text-slate-300">
+                Yenilenmiş (refurbished) ürün garantili cihazlarda tutar fark etmeksizin azami <strong>12 aya</strong> kadar taksit imkanı tanınmaktadır.
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        let catRows = NORMAL_CATEGORIES.map(cat => {
+          const etiket = price * cat.factor;
+          const hesabaGecen = price - (price * cat.factor - price);
+          return `
+            <tr class="hover:bg-slate-800/30">
+              <td class="py-2.5 px-3 font-medium text-slate-200">${cat.name}</td>
+              <td class="py-2.5 px-3 text-slate-400">${cat.rateTxt}</td>
+              <td class="py-2.5 px-3 text-right font-mono font-medium text-emerald-400">${formatTRY(etiket)}</td>
+              <td class="py-2.5 px-3 text-right font-mono text-slate-300">${formatTRY(hesabaGecen)}</td>
+            </tr>
+          `;
+        }).join('');
+
+        catCard.innerHTML = `
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-1 flex items-center space-x-2">
+            <span>🏷️</span>
+            <span>Kategori Bazlı Sabit Komisyon Oranları</span>
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">Elektronik ve Beyaz Eşya kategorileri için Excel etiket & hakediş tablosu</p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 font-semibold uppercase">
+                  <th class="py-2.5 px-3">Kategori</th>
+                  <th class="py-2.5 px-3">Komisyon</th>
+                  <th class="py-2.5 px-3 text-right">Etiket Fiyatı</th>
+                  <th class="py-2.5 px-3 text-right">Hesaba Geçen</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/50">
+                ${catRows}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+    }
+
+    // Initialize on load
+    calculate();
+  </script>
+</body>
+</html>
